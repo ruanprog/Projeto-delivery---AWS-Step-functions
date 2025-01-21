@@ -1,0 +1,136 @@
+# 🚚 Assistente de Delivery com AWS Step Functions 🍕  
+
+Este repositório apresenta um **assistente de delivery** utilizando **AWS Step Functions**. Este fluxo de trabalho simula um processo simples de entrega, incluindo:  
+
+1. 📥 **Receber o pedido**  
+2. 💳 **Confirmar o pagamento**  
+3. 🍴 **Preparar o pedido**  
+4. 🚦 **Atualizar o status da entrega**  
+5. 📲 **Notificar o cliente**  
+
+---
+
+## 📋 Definição do Fluxo de Trabalho (Step Functions)  
+
+Abaixo está a definição em **Amazon States Language (ASL)** do fluxo de trabalho Step Functions:  
+
+```json
+{
+  "Comment": "Fluxo de trabalho para um assistente de delivery",
+  "StartAt": "ReceberPedido",
+  "States": {
+    "ReceberPedido": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:ReceberPedido",
+      "Next": "ConfirmarPagamento"
+    },
+    "ConfirmarPagamento": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.pagamento",
+          "StringEquals": "Aprovado",
+          "Next": "PrepararPedido"
+        }
+      ],
+      "Default": "PagamentoRejeitado"
+    },
+    "PagamentoRejeitado": {
+      "Type": "Fail",
+      "Error": "PagamentoRejeitado",
+      "Cause": "O pagamento não foi aprovado."
+    },
+    "PrepararPedido": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:PrepararPedido",
+      "Next": "AtualizarStatusEntrega"
+    },
+    "AtualizarStatusEntrega": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:AtualizarStatusEntrega",
+      "Next": "NotificarCliente"
+    },
+    "NotificarCliente": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:NotificarCliente",
+      "End": true
+    }
+  }
+}
+
+## 🛠️ Explicação das Etapas
+- 1️⃣ ReceberPedido
+Uma função Lambda que recebe os detalhes do pedido do cliente.
+- 2️⃣ ConfirmarPagamento
+Verifica se o pagamento foi aprovado:
+Aprovado: Continua para preparar o pedido.
+Rejeitado: Encerra o fluxo com erro.
+- 3️⃣ PrepararPedido
+Uma função Lambda que processa a preparação do pedido, como cozinhar a comida ou embalar os itens.
+- 4️⃣ AtualizarStatusEntrega
+Atualiza o status do pedido (por exemplo, "Em preparação", "A caminho", etc.).
+- 5️⃣ NotificarCliente
+Notifica o cliente sobre o status do pedido via e-mail, SMS ou aplicativo.
+
+🐍 Funções Lambda
+
+Exemplo: ReceberPedido
+
+python
+import json
+
+def lambda_handler(event, context):
+    pedido = {
+        "id": event["id"],
+        "itens": event["itens"],
+        "cliente": event["cliente"]
+    }
+    return {
+        "statusCode": 200,
+        "body": json.dumps(pedido)
+    }
+
+
+Exemplo: ConfirmarPagamento
+
+python
+import random
+
+def lambda_handler(event, context):
+    pagamento = random.choice(["Aprovado", "Rejeitado"])
+    return {
+        "pagamento": pagamento
+    }
+
+
+Exemplo: NotificarCliente
+
+python
+import boto3
+
+def lambda_handler(event, context):
+    cliente = event["cliente"]
+    mensagem = f"Olá {cliente['nome']}, seu pedido está a caminho!"
+    # Lógica para enviar mensagem (SNS, e-mail, etc.)
+    return {"mensagem": mensagem}
+
+🚀 Implantação
+1️⃣ Crie as funções Lambda
+Implante as funções Lambda mencionadas acima no console da AWS.
+2️⃣ Configure o Step Functions
+Importe a definição do fluxo de trabalho no Step Functions utilizando o JSON fornecido.
+3️⃣ Configure permissões
+Certifique-se de que o Step Functions possui permissões para invocar as funções Lambda.
+4️⃣ Teste o fluxo
+
+Envie eventos de entrada no Step Functions, como o exemplo abaixo:
+
+json
+{
+  "id": "12345",
+  "itens": ["Pizza", "Refrigerante"],
+  "cliente": {
+    "nome": "João Silva",
+    "telefone": "+55 11 98765-4321"
+  }
+}
